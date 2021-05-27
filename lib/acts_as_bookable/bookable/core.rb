@@ -152,6 +152,20 @@ module ActsAsBookable::Bookable
     end
 
     module InstanceMethods
+      def availability(time_start, time_end, amount: 1, duration: nil)
+        overlapped = ActsAsBookable::Booking.overlapped(self, time_start: time_start, time_end: time_end).to_a
+
+        self.schedule.occurrences_between(time_start, time_end).select do |occurrence|
+          # https://github.com/seejohnrun/ice_cube/issues/497
+          time_end = if duration
+                       occurrence.start_time + duration
+                     else
+                       occurrence.end_time - 1.second
+                     end
+          self.check_availability(time_start: occurrence.start_time, time_end: time_end, scope: overlapped, amount: amount)
+        end
+      end
+
       ##
       # Check availability of current bookable, raising an error if the bookable is not available
       #
@@ -183,10 +197,12 @@ module ActsAsBookable::Bookable
             # Check start time
             if !(ActsAsBookable::TimeUtils.time_in_schedule?(self.schedule, opts[:time_start]))
               time_check_ok = false
+              # p "opts[:time_start]: #{opts[:time_start]}", time_check_ok
             end
             # Check end time
             if !(ActsAsBookable::TimeUtils.time_in_schedule?(self.schedule, opts[:time_end]))
               time_check_ok = false
+              # p "opts[:time_end] #{opts[:time_end]}", time_check_ok
             end
           # If it's not bookable across recurrences, check if the whole interval is included in an occurrence
           else
@@ -209,7 +225,11 @@ module ActsAsBookable::Bookable
         ##
         # Real capacity check (calculated with overlapped bookings)
         #
-        overlapped = ActsAsBookable::Booking.overlapped(self, opts)
+        overlapped = if opts[:scope]
+                       opts[:scope]
+                     else
+                       ActsAsBookable::Booking.overlapped(self, opts)
+                     end
         # If capacity_type is :closed cannot book if already booked (no matter if amount < capacity)
         if (self.booking_opts[:capacity_type] == :closed && !overlapped.empty?)
           raise ActsAsBookable::AvailabilityError.new ActsAsBookable::T.er('.availability.already_booked', model: self.class.to_s)

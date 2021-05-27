@@ -2,6 +2,11 @@ require 'spec_helper'
 
 describe 'Bookable model' do
   describe 'InstanceMethods' do
+    it 'should add a method #availability in instance-side' do
+      @bookable = Bookable.new
+      expect(@bookable).to respond_to :availability
+    end
+
     it 'should add a method #check_availability! in instance-side' do
       @bookable = Bookable.new
       expect(@bookable).to respond_to :check_availability!
@@ -15,6 +20,33 @@ describe 'Bookable model' do
     it 'should add a method #validate_booking_options! in instance-side' do
       @bookable = Bookable.new
       expect(@bookable).to respond_to :validate_booking_options!
+    end
+
+    describe '#availability' do
+      after(:each) do
+        Bookable.booking_opts = {}
+        Bookable.initialize_acts_as_bookable_core
+      end
+
+      before(:each) do
+        Bookable.booking_opts = {
+          time_type: :range,
+          capacity_type: :closed,
+          bookable_across_occurrences: true
+        }
+        Bookable.initialize_acts_as_bookable_core
+        schedule = IceCube::Schedule.new('2016-01-01'.to_date, duration: 1.hour) do |s|
+          s.add_recurrence_rule IceCube::Rule.daily.hour_of_day(1)
+        end
+        @bookable = Bookable.create!(name: 'bookable', capacity: 1, schedule: schedule)
+      end
+
+      it 'should return available occurrences' do
+        time_start = '2016-01-01'.to_datetime
+        time_end = time_start + 1.week
+        expect(@bookable.availability(time_start, time_end).size).to eq(7)
+        expect(@bookable.availability(time_start, time_end, duration: 10.minutes).size).to eq(7)
+      end
     end
 
     describe '#check_availability! and check_availability' do
