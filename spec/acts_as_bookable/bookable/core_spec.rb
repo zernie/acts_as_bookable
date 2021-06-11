@@ -36,16 +36,19 @@ describe 'Bookable model' do
         }
         Bookable.initialize_acts_as_bookable_core
         schedule = IceCube::Schedule.new('2016-01-01'.to_date, duration: 1.hour) do |s|
-          s.add_recurrence_rule IceCube::Rule.daily.hour_of_day(1)
+          s.add_recurrence_rule IceCube::Rule.daily.hour_of_day(0)
+          # s.rrule(IceCube::Rule.minutely(30.minutes).day(1).hour_of_day(0))
         end
         @bookable = Bookable.create!(name: 'bookable', capacity: 1, schedule: schedule)
       end
 
       it 'should return available occurrences' do
-        time_start = '2016-01-01'.to_datetime
+        time_start = '2016-01-01'.to_time
         time_end = time_start + 1.week
-        expect(@bookable.availability(time_start, time_end).size).to eq(7)
-        expect(@bookable.availability(time_start, time_end, duration: 10.minutes).size).to eq(7)
+        booker = create(:booker)
+        @bookable.be_booked!(booker, time_start: time_start, time_end: time_start + 30.minutes, amount: 1)
+        # expect(@bookable.availability(time_start, time_end).to_a.size).to eq(7)
+        expect(@bookable.availability(time_start, time_end, duration: 15.minutes).to_a.size).to eq(8)
       end
     end
 

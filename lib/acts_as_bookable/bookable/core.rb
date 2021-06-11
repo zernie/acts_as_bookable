@@ -155,7 +155,7 @@ module ActsAsBookable::Bookable
       def availability(time_start, time_end, amount: 1, duration: nil)
         overlapped = ActsAsBookable::Booking.overlapped(self, time_start: time_start, time_end: time_end).to_a
 
-        self.schedule.occurrences_between(time_start, time_end).select do |occurrence|
+        self.schedule.occurrences_between(time_start, time_end).lazy.select do |occurrence|
           # https://github.com/seejohnrun/ice_cube/issues/497
           time_end = if duration
                        occurrence.start_time + duration
