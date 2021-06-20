@@ -156,10 +156,10 @@ module ActsAsBookable::Bookable
         overlapped = ActsAsBookable::Booking.overlapped(self, time_start: time_start, time_end: time_end).to_a
 
         self.schedule.occurrences_between(time_start, time_end).lazy.select do |occurrence|
-          # https://github.com/seejohnrun/ice_cube/issues/497
           time_end = if duration
                        occurrence.start_time + duration
                      else
+                       # https://github.com/seejohnrun/ice_cube/issues/497
                        occurrence.end_time - 1.second
                      end
           self.check_availability(time_start: occurrence.start_time, time_end: time_end, scope: overlapped, amount: amount)
@@ -231,11 +231,12 @@ module ActsAsBookable::Bookable
                        ActsAsBookable::Booking.overlapped(self, opts)
                      end
         # If capacity_type is :closed cannot book if already booked (no matter if amount < capacity)
-        if (self.booking_opts[:capacity_type] == :closed && !overlapped.empty?)
-          raise ActsAsBookable::AvailabilityError.new ActsAsBookable::T.er('.availability.already_booked', model: self.class.to_s, amount: 1, total: 1)
+        if (self.booking_opts[:capacity_type] == :closed && overlapped.present?)
+          Rails.logger.info(overlapped.to_json)
+          raise ActsAsBookable::AvailabilityError.new ActsAsBookable::T.er('.availability.already_booked', model: self.class.to_s, amount: overlapped.size, total: 1)
         end
         # if capacity_type is :open, check if amount <= maximum amount of overlapped booking
-        if (self.booking_opts[:capacity_type] == :open && !overlapped.empty?)
+        if (self.booking_opts[:capacity_type] == :open && overlapped.present?)
           # if time_type is :range, split in sub-intervals and check the maximum sum of amounts against capacity for each sub-interval
           if (self.booking_opts[:time_type] == :range)
             # Map overlapped bookings to a set of intervals with amount
