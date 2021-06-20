@@ -39,6 +39,7 @@ describe 'Bookable model' do
           s.add_recurrence_rule IceCube::Rule.daily.hour_of_day(0)
           # s.rrule(IceCube::Rule.minutely(30.minutes).day(1).hour_of_day(0))
         end
+        p schedule.start_time
         @bookable = Bookable.create!(name: 'bookable', capacity: 1, schedule: schedule)
       end
 
